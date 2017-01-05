@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/notification_album_simple"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:background="@drawable/avatar_holder" />
+
+    <TextView
+        android:id="@+id/notification_title_simple"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="145dp"
+        android:layout_marginTop="10dp"
+        android:layout_toRightOf="@id/notification_album_simple"
+        android:alpha="0.8"
+        android:maxLines="1"
+        android:text="Phía Sau Một Cô Gái"
+        android:textColor="#ffffff"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/notification_artist_simple"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/notification_title_simple"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="145dp"
+        android:layout_toRightOf="@id/notification_album_simple"
+        android:alpha="0.5"
+        android:maxLines="1"
+        android:paddingRight="24dp"
+        android:text="Soobin Hoàng Sơn"
+        android:textColor="#ffffff"
+        android:textSize="14sp" />
+
+    <ImageView
+        android:id="@+id/notification_close_simple"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_marginRight="10dp"
+        android:alpha="0.2"
+        android:src="@drawable/notification_close" />
+
+    <ImageView
+        android:id="@+id/notification_next_simple"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="15dp"
+        android:layout_toLeftOf="@id/notification_close_simple"
+        android:scaleType="centerInside"
+        android:src="@drawable/notification_next" />
+
+    <ImageView
+        android:id="@+id/notification_play_simple"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="15dp"
+        android:layout_toLeftOf="@id/notification_next_simple"
+        android:scaleType="centerInside"
+        android:src="@drawable/notification_play" />
+
+    <ImageView
+        android:id="@+id/notification_previous_simple"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="15dp"
+        android:layout_toLeftOf="@id/notification_play_simple"
+        android:scaleType="centerInside"
+        android:src="@drawable/notification_previous" />
+</RelativeLayout>

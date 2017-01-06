@@ -48,7 +48,6 @@ public class FragmentSearch extends Fragment {
         return myView;
     }
 
-
     private void setUpViewPager(ViewPager viewPager) {
         MyViewPagerAdapter adapter = new MyViewPagerAdapter(getChildFragmentManager());
         adapter.addFragment(FragmentSearchTrack.newInstance(mQuery), "Track");

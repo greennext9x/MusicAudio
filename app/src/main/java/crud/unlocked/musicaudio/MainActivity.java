@@ -18,6 +18,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.telecom.ConnectionRequest;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,6 +34,7 @@ import crud.unlocked.learnvolley.R;
 import crud.unlocked.musicaudio.fragment.FragmentCharts;
 import crud.unlocked.musicaudio.fragment.FragmentChartsGenre;
 import crud.unlocked.musicaudio.fragment.FragmentChartsGenreDetail;
+import crud.unlocked.musicaudio.fragment.FragmentConnection;
 import crud.unlocked.musicaudio.fragment.FragmentHome;
 import crud.unlocked.musicaudio.fragment.FragmentSearch;
 import crud.unlocked.musicaudio.fragment.FragmentSearchPlaylist;
@@ -162,15 +164,27 @@ public class MainActivity extends AppCompatActivity {
 
                 if (id == R.id.nav_mymusic) {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    ft.replace(R.id.content_main, new FragmentHome());
+                    if (Utility.checkConnection(getApplicationContext())) {
+                        ft.replace(R.id.content_main, new FragmentHome());
+                    } else {
+                        ft.replace(R.id.content_main, new FragmentConnection());
+                    }
                     ft.commit();
                 } else if (id == R.id.nav_new_hot) {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    ft.replace(R.id.content_main, FragmentCharts.newInstance(false));
+                    if (Utility.checkConnection(getApplicationContext())) {
+                        ft.replace(R.id.content_main, FragmentCharts.newInstance(false));
+                    } else {
+                        ft.replace(R.id.content_main, new FragmentConnection());
+                    }
                     ft.commit();
                 } else if (id == R.id.nav_top50) {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    ft.replace(R.id.content_main, FragmentCharts.newInstance(true));
+                    if (Utility.checkConnection(getApplicationContext())) {
+                        ft.replace(R.id.content_main, FragmentCharts.newInstance(true));
+                    } else {
+                        ft.replace(R.id.content_main, new FragmentConnection());
+                    }
                     ft.commit();
                 } else if (id == R.id.nav_exit) {
                     showAlertDialog();
@@ -181,11 +195,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_main, new FragmentHome());
+        if (Utility.checkConnection(getApplicationContext())) {
+            ft.replace(R.id.content_main, new FragmentHome());
+        } else {
+            ft.replace(R.id.content_main, new FragmentConnection());
+        }
+
         ft.commit();
     }
 
-    public void showAlertDialog(){
+    public void showAlertDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Exit MusicAudio?");
         builder.setMessage("Are you sure you want to quit?");
@@ -230,7 +249,10 @@ public class MainActivity extends AppCompatActivity {
                 if (isSearchCommit) {
                     isSearchCommit = false;
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    ft.replace(R.id.content_main, FragmentSearch.newInstance(query));
+                    if(Utility.checkConnection(getApplicationContext())){
+                        ft.replace(R.id.content_main, FragmentSearch.newInstance(query));
+                    }else ft.replace(R.id.content_main, new FragmentConnection());
+
                     ft.addToBackStack(null);
                     ft.commit();
 

@@ -7,5 +7,6 @@
     <color name="colorLine">#FFDDDDDD</color>
     <color name="colorDefaultText">#808080</color>
     <color name="colorItemSelected">#E1F5FE</color>
-    <color name="colorPlayMusic">#ffffff</color>
+    <color name="backgroundPlayMusic">#ffffff</color>
+    <color name="backgroundNotification">#ff424242</color>
 </resources>

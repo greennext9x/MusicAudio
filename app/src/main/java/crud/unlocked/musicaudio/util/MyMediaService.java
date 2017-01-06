@@ -34,6 +34,9 @@ import crud.unlocked.musicaudio.model.Track;
 public class MyMediaService extends IntentService {
 
     private static final String TAG = "MyMediaService";
+    private static final int NOTIF_ID = 0;
+    private static NotificationCompat.Builder mBuilder;
+    RemoteViews mContentViews, mBigContentViews;
     private MediaPlayer mMediaPlayer;
     private List<Track> mTrackList;
     private int currentIndex;
@@ -42,19 +45,107 @@ public class MyMediaService extends IntentService {
     private Intent myBroadcastMediaPlay;
     private Handler handler = new Handler();
     private boolean isRunnable, streamError, isNotificationClick;
-    private static Context mContext;
-    private static NotificationCompat.Builder mBuilder;
     private PendingIntent mPendingIntent;
     private NotificationManager mNotificationManager;
-    RemoteViews mContentViews, mBigContentViews;
-    private static final int NOTIF_ID = 0;
+    private Runnable r = new Runnable() {
+        @Override
+        public void run() {
+            Bundle bundle = new Bundle();
+            bundle.putInt("progress", mMediaPlayer.getCurrentPosition());
+            bundle.putInt("action", MyConfig.MY_MEDIA_PLAY_PROGRESS);
+            myBroadcastMediaPlay.replaceExtras(bundle);
+            sendBroadcast(myBroadcastMediaPlay);
+            handler.postDelayed(this, 1000);
+        }
+    };
+    private BroadcastReceiver myReceiverMediaControl = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getIntExtra("action", 0)) {
+                case MyConfig.MY_NOTIFICATION_MEDIA_PLAY:
+                    if (isNotificationClick) {
+                        pressPlayPause();
+                    }
+                    break;
+                case MyConfig.MY_NOTIFICATION_MEDIA_NEXT:
+                    if (isNotificationClick) {
+                        pressNext();
+                        updateNotification();
+                    }
+                    break;
+                case MyConfig.MY_NOTIFICATION_MEDIA_PREVIOUS:
+                    if (isNotificationClick) {
+                        pressPrevious();
+                        updateNotification();
+                    }
+                    break;
+                case MyConfig.MY_NOTIFICATION_MEDIA_CLOSE:
+                    mNotificationManager.cancel(NOTIF_ID);
+                    myBroadcastMediaPlay.putExtra("action", MyConfig.MY_MEDIA_PLAY_CLOSE);
+                    sendBroadcast(myBroadcastMediaPlay);
+                    stopSelf();
+                    break;
+            }
+        }
+    };
+    private BroadcastReceiver myReceiverActionPlay = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            switch (intent.getIntExtra("trackAction", -1)) {
+                case MyConfig.MY_ACTION_PLAY_PLAY_PAUSE:
+                    pressPlayPause();
+                    break;
+                case MyConfig.MY_ACTION_PLAY_RANDOM_ON:
+                    random = true;
+                    break;
+                case MyConfig.MY_ACTION_PLAY_RANDOM_OFF:
+                    random = false;
+                    break;
+                case MyConfig.MY_ACTION_PLAY_LOOP_OFF:
+                    loop = MyConfig.MY_ACTION_PLAY_LOOP_OFF;
+                    break;
+                case MyConfig.MY_ACTION_PLAY_LOOP_ONE:
+                    loop = MyConfig.MY_ACTION_PLAY_LOOP_ONE;
+                    break;
+                case MyConfig.MY_ACTION_PLAY_LOOP_ALL:
+                    loop = MyConfig.MY_ACTION_PLAY_LOOP_ALL;
+                    break;
+                case MyConfig.MY_ACTION_PLAY_CURRENT_TRACK:
+                    changeSelectedTrack(intent.getIntExtra("trackIndex", 0));
+                    prepareTrack();
+                    break;
+                case MyConfig.MY_ACTION_PLAY_CURRENT_SEEK:
+                    if (mMediaPlayer != null) {
+                        mMediaPlayer.seekTo(intent.getIntExtra("trackProgress", 0) * 1000);
+                    }
+                    break;
+                case MyConfig.MY_ACTION_PLAY_NEXT_TRACK:
+                    pressNext();
+                    break;
+                case MyConfig.MY_ACTION_PLAY_PREVIOUS_TRACK:
+                    pressPrevious();
+                    break;
+                case MyConfig.MY_ACTION_PLAY_REQUEST_TRACK:
+                    myBroadcastMediaPlay.putExtra("action", MyConfig.MY_MEDIA_PLAY_RESPONSE_TRACK);
+                    myBroadcastMediaPlay.putExtra("track", mTrackList.get(currentIndex));
+                    myBroadcastMediaPlay.putExtra("currentTime", mMediaPlayer.getCurrentPosition());
+                    myBroadcastMediaPlay.putExtra("isPlaying", mMediaPlayer.isPlaying());
+                    sendBroadcast(myBroadcastMediaPlay);
+                    break;
+                case MyConfig.MY_ACTION_PLAY_SEEK_PROGRESS:
+                    mMediaPlayer.seekTo(intent.getIntExtra("progress", 0) * 1000);
+                    break;
+            }
+        }
+    };
+
 
     public MyMediaService() {
         super(TAG);
     }
 
     public static Intent newIntent(Context context, ArrayList<Track> trackList, boolean random, int loop) {
-        mContext = context;
         Intent i = new Intent(context, MyMediaService.class);
         Bundle args = new Bundle();
         args.putParcelableArrayList("mTrackList", trackList);
@@ -81,7 +172,6 @@ public class MyMediaService extends IntentService {
         return START_STICKY;
     }
 
-
     @Override
     protected void onHandleIntent(Intent intent) {
     }
@@ -96,7 +186,7 @@ public class MyMediaService extends IntentService {
         PendingIntent pIntent = PendingIntent.getActivity(this, 0, i,
                 PendingIntent.FLAG_UPDATE_CURRENT);
         mBuilder.setContentIntent(pIntent);
-        mBuilder.setSmallIcon(R.drawable.notification);
+        mBuilder.setSmallIcon(R.drawable.logo);
         mBuilder.setAutoCancel(false);
 
         Track track = mTrackList.get(currentIndex);
@@ -104,7 +194,7 @@ public class MyMediaService extends IntentService {
         mContentViews = new RemoteViews(getPackageName(), R.layout.notification_simple);
         mContentViews.setTextViewText(R.id.notification_title_simple, track.getTitle());
         mContentViews.setTextViewText(R.id.notification_artist_simple, track.getArtist());
-        //mContentViews.setImageViewResource(R.id.notification_play_simple, R.drawable.notification_pause);
+        mContentViews.setImageViewResource(R.id.notification_play_simple, R.drawable.notification_pause);
 
         Intent myBroadcastMediaControl = new Intent(MyConfig.MY_NOTIFICATION_MEDIA);
         //Send Broadcast in notification use pending intent
@@ -125,7 +215,7 @@ public class MyMediaService extends IntentService {
         mContentViews.setOnClickPendingIntent(R.id.notification_close_simple, mPendingIntent);
 
         mBuilder.setContent(mContentViews);
-        Picasso.with(mContext)
+        Picasso.with(this)
                 .load(mTrackList.get(currentIndex).getArtworkUrl())
                 .into(mContentViews, R.id.notification_album_simple, 0, mBuilder.build());
 
@@ -133,7 +223,7 @@ public class MyMediaService extends IntentService {
             mBigContentViews = new RemoteViews(getPackageName(), R.layout.notification);
             mBigContentViews.setTextViewText(R.id.notification_title, track.getTitle());
             mBigContentViews.setTextViewText(R.id.notification_artist, track.getArtist());
-            //mBigContentViews.setImageViewResource(R.id.notification_play, R.drawable.notification_pause);
+            mBigContentViews.setImageViewResource(R.id.notification_play, R.drawable.notification_pause);
 
             //Send Broadcast in notification use pending intent
             myBroadcastMediaControl.putExtra("action", MyConfig.MY_NOTIFICATION_MEDIA_PLAY);
@@ -153,7 +243,7 @@ public class MyMediaService extends IntentService {
             mBigContentViews.setOnClickPendingIntent(R.id.notification_close, mPendingIntent);
 
             mBuilder.setCustomBigContentView(mBigContentViews);
-            Picasso.with(mContext)
+            Picasso.with(this)
                     .load(mTrackList.get(currentIndex).getArtworkUrl())
                     .into(mBigContentViews, R.id.notification_album, 0, mBuilder.build());
 
@@ -165,35 +255,6 @@ public class MyMediaService extends IntentService {
         notification.flags = Notification.FLAG_NO_CLEAR;
         mNotificationManager.notify(NOTIF_ID, notification);
     }
-
-    private BroadcastReceiver myReceiverMediaControl = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            switch (intent.getIntExtra("action", 0)) {
-                case MyConfig.MY_NOTIFICATION_MEDIA_PLAY:
-                    if (isNotificationClick) {
-                        pressPlayPause();
-                    }
-                    break;
-                case MyConfig.MY_NOTIFICATION_MEDIA_NEXT:
-                    if (isNotificationClick) {
-                        pressNext();
-                    }
-                    break;
-                case MyConfig.MY_NOTIFICATION_MEDIA_PREVIOUS:
-                    if (isNotificationClick) {
-                        pressPrevious();
-                    }
-                    break;
-                case MyConfig.MY_NOTIFICATION_MEDIA_CLOSE:
-                    mNotificationManager.cancel(NOTIF_ID);
-                    myBroadcastMediaPlay.putExtra("action", MyConfig.MY_MEDIA_PLAY_CLOSE);
-                    sendBroadcast(myBroadcastMediaPlay);
-                    stopSelf();
-                    break;
-            }
-        }
-    };
 
     private void setMediaPlayer() {
         //Media
@@ -252,9 +313,6 @@ public class MyMediaService extends IntentService {
                         }
                     }
                 } else {
-//                    Toast.makeText(mContext,
-//                            "Stream Track: " + mTrackList.get(currentIndex).getTitle() + " Error",
-//                            Toast.LENGTH_SHORT).show();
                     changeSelectedTrack(++currentIndex);
                     prepareTrack();
                 }
@@ -295,7 +353,6 @@ public class MyMediaService extends IntentService {
                 handler.post(r);
                 isRunnable = true;
             }
-            updateNotification();
             isNotificationClick = true;
         }
     }
@@ -337,31 +394,25 @@ public class MyMediaService extends IntentService {
         sendBroadcast(myBroadcastMediaPlay);
     }
 
-    private void updateNotification(){
+    private void updateNotification() {
         Track track = mTrackList.get(currentIndex);
-        if (isRunnable){
-            mContentViews.setImageViewResource(R.id.notification_play_simple, R.drawable.notification_pause);
-            mBigContentViews.setImageViewResource(R.id.notification_play, R.drawable.notification_pause);
-        }else {
-            mContentViews.setImageViewResource(R.id.notification_play_simple, R.drawable.notification_play);
-            mBigContentViews.setImageViewResource(R.id.notification_play, R.drawable.notification_play);
-        }
+        mContentViews.setImageViewResource(R.id.notification_play_simple, R.drawable.notification_pause);
+        mBigContentViews.setImageViewResource(R.id.notification_play, R.drawable.notification_pause);
         mContentViews.setTextViewText(R.id.notification_title_simple, track.getTitle());
         mContentViews.setTextViewText(R.id.notification_artist_simple, track.getArtist());
-        Picasso.with(mContext)
+        Picasso.with(this)
                 .load(mTrackList.get(currentIndex).getArtworkUrl())
                 .into(mContentViews, R.id.notification_album_simple, 0, mBuilder.build());
 
         mBigContentViews.setTextViewText(R.id.notification_title, track.getTitle());
         mBigContentViews.setTextViewText(R.id.notification_artist, track.getArtist());
-        Picasso.with(mContext)
+        Picasso.with(this)
                 .load(mTrackList.get(currentIndex).getArtworkUrl())
                 .into(mBigContentViews, R.id.notification_album, 0, mBuilder.build());
         Notification notification = mBuilder.build();
         notification.flags = Notification.FLAG_NO_CLEAR;
         mNotificationManager.notify(NOTIF_ID, notification);
     }
-
 
     private void pressPrevious() {
         if (mMediaPlayer != null) {
@@ -408,71 +459,6 @@ public class MyMediaService extends IntentService {
             }
         }
     }
-
-
-    private BroadcastReceiver myReceiverActionPlay = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            switch (intent.getIntExtra("trackAction", -1)) {
-                case MyConfig.MY_ACTION_PLAY_PLAY_PAUSE:
-                    pressPlayPause();
-                    break;
-                case MyConfig.MY_ACTION_PLAY_RANDOM_ON:
-                    random = true;
-                    break;
-                case MyConfig.MY_ACTION_PLAY_RANDOM_OFF:
-                    random = false;
-                    break;
-                case MyConfig.MY_ACTION_PLAY_LOOP_OFF:
-                    loop = MyConfig.MY_ACTION_PLAY_LOOP_OFF;
-                    break;
-                case MyConfig.MY_ACTION_PLAY_LOOP_ONE:
-                    loop = MyConfig.MY_ACTION_PLAY_LOOP_ONE;
-                    break;
-                case MyConfig.MY_ACTION_PLAY_LOOP_ALL:
-                    loop = MyConfig.MY_ACTION_PLAY_LOOP_ALL;
-                    break;
-                case MyConfig.MY_ACTION_PLAY_CURRENT_TRACK:
-                    changeSelectedTrack(intent.getIntExtra("trackIndex", 0));
-                    prepareTrack();
-                    break;
-                case MyConfig.MY_ACTION_PLAY_CURRENT_SEEK:
-                    if (mMediaPlayer != null) {
-                        mMediaPlayer.seekTo(intent.getIntExtra("trackProgress", 0) * 1000);
-                    }
-                    break;
-                case MyConfig.MY_ACTION_PLAY_NEXT_TRACK:
-                    pressNext();
-                    break;
-                case MyConfig.MY_ACTION_PLAY_PREVIOUS_TRACK:
-                    pressPrevious();
-                    break;
-                case MyConfig.MY_ACTION_PLAY_REQUEST_TRACK:
-                    myBroadcastMediaPlay.putExtra("action", MyConfig.MY_MEDIA_PLAY_RESPONSE_TRACK);
-                    myBroadcastMediaPlay.putExtra("track", mTrackList.get(currentIndex));
-                    myBroadcastMediaPlay.putExtra("currentTime", mMediaPlayer.getCurrentPosition());
-                    myBroadcastMediaPlay.putExtra("isPlaying", mMediaPlayer.isPlaying());
-                    sendBroadcast(myBroadcastMediaPlay);
-                    break;
-                case MyConfig.MY_ACTION_PLAY_SEEK_PROGRESS:
-                    mMediaPlayer.seekTo(intent.getIntExtra("progress", 0) * 1000);
-                    break;
-            }
-        }
-    };
-
-    private Runnable r = new Runnable() {
-        @Override
-        public void run() {
-            Bundle bundle = new Bundle();
-            bundle.putInt("progress", mMediaPlayer.getCurrentPosition());
-            bundle.putInt("action", MyConfig.MY_MEDIA_PLAY_PROGRESS);
-            myBroadcastMediaPlay.replaceExtras(bundle);
-            sendBroadcast(myBroadcastMediaPlay);
-            handler.postDelayed(this, 1000);
-        }
-    };
 
     @Override
     public void onDestroy() {

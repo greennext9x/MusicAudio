@@ -5,13 +5,11 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -75,14 +73,68 @@ public class MainActivity extends AppCompatActivity {
         }
     };
     private boolean mBroadcastRegistered = false;
+    private BroadcastReceiver myReceiverMediaPlay = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getIntExtra("action", -1)) {
+                case MyConfig.MY_MEDIA_PLAY_TRACK_STANDBY:
+                    getTrackStandBy(intent.getLongExtra("maxTime", 0));
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_TRACK_START:
+                    getTrackStart(intent.getStringExtra("artworkUrl"));
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_STOP:
+                    getMediaStop();
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_RESPONSE_TRACK:
+                    Track track = intent.getParcelableExtra("track");
+                    maxTime.setText(Utility.convertDuration(track.getDuration()));
+                    seekBar.setMax((int) (track.getDuration() / 1000));
+                    Picasso.with(MainActivity.this)
+                            .load(track.getArtworkUrl())
+                            .placeholder(R.drawable.music_placeholder)
+                            .into(imgAlbum);
+                    int progress = intent.getIntExtra("currentTime", 0);
+                    seekBar.setProgress(progress / 1000);
+                    currentTime.setText(Utility.convertDuration(progress));
+                    mDegree = progress / 100;
+                    imgAlbum.setRotation(mDegree);
+                    if (intent.getBooleanExtra("isPlaying", false)) {
+                        setRunnable(true);
+                        play.setBackgroundResource(R.drawable.ic_pause_circle_black);
+                    } else {
+                        setRunnable(false);
+                        play.setBackgroundResource(R.drawable.ic_play_circle_black);
+                    }
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_PROGRESS:
+                    int currentPosition = intent.getIntExtra("progress", 0);
+                    seekBar.setProgress(currentPosition / 1000);
+                    currentTime.setText(Utility.convertDuration((long) currentPosition));
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_PLAY:
+                    if (intent.getBooleanExtra("isPlaying", false)) {
+                        setRunnable(true);
+                        play.setBackgroundResource(R.drawable.ic_pause_circle_black);
+                    } else {
+                        setRunnable(false);
+                        play.setBackgroundResource(R.drawable.ic_play_circle_black);
+                    }
+                    break;
+                case MyConfig.MY_MEDIA_PLAY_CLOSE:
+                    getMediaStop();
+                    rlMainPlayMusic.setVisibility(View.GONE);
+                    //finish();
+                    break;
+            }
+        }
+    };
 
     private void setRunnable(boolean isRun) {
         if (isRun) {
             runOnUiThread(runnableRotation);
-            isRunnable = isRun;
         } else {
             handler.removeCallbacks(runnableRotation);
-            isRunnable = isRun;
         }
     }
 
@@ -132,6 +184,7 @@ public class MainActivity extends AppCompatActivity {
         ft.replace(R.id.content_main, new FragmentHome());
         ft.commit();
     }
+
     public void showAlertDialog(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Exit MusicAudio?");
@@ -140,10 +193,11 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                MainActivity.this.finish();
-                Intent myIntent = new Intent(MainActivity.this, MyMediaService.class);
-                stopService(myIntent);
-
+                Intent exit = new Intent(MyConfig.MY_NOTIFICATION_MEDIA);
+                exit.putExtra("action", MyConfig.MY_NOTIFICATION_MEDIA_CLOSE);
+                sendBroadcast(exit);
+                onPause();
+                finish();
             }
         });
         builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -156,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.show();
 
     }
+
     private void requestCancelAll() {
         VolleySingleton.getInstance(this).cancelRequests(FragmentChartsGenre.TAG);
         VolleySingleton.getInstance(this).cancelRequests(FragmentChartsGenreDetail.TAG);
@@ -353,66 +408,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private BroadcastReceiver myReceiverMediaPlay = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            switch (intent.getIntExtra("action", -1)) {
-                case MyConfig.MY_MEDIA_PLAY_TRACK_STANDBY:
-                    getTrackStandBy(intent.getLongExtra("maxTime", 0));
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_TRACK_START:
-                    getTrackStart(intent.getStringExtra("artworkUrl"));
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_STOP:
-                    getMediaStop();
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_RESPONSE_TRACK:
-                    Track track = intent.getParcelableExtra("track");
-                    maxTime.setText(Utility.convertDuration(track.getDuration()));
-                    seekBar.setMax((int) (track.getDuration() / 1000));
-                    Picasso.with(MainActivity.this)
-                            .load(track.getArtworkUrl())
-                            .placeholder(R.drawable.music_placeholder)
-                            .into(imgAlbum);
-                    int progress = intent.getIntExtra("currentTime", 0);
-                    seekBar.setProgress(progress / 1000);
-                    currentTime.setText(Utility.convertDuration(progress));
-                    mDegree = progress / 100;
-                    imgAlbum.setRotation(mDegree);
-                    if (intent.getBooleanExtra("isPlaying", false)) {
-                        setRunnable(true);
-                        play.setBackgroundResource(R.drawable.ic_pause_circle_black);
-                    } else {
-                        setRunnable(false);
-                        play.setBackgroundResource(R.drawable.ic_play_circle_black);
-                    }
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_PROGRESS:
-                    int currentPosition = intent.getIntExtra("progress", 0);
-                    seekBar.setProgress(currentPosition / 1000);
-                    currentTime.setText(Utility.convertDuration((long) currentPosition));
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_PLAY:
-                    if (intent.getBooleanExtra("isPlaying", false)){
-                        setRunnable(true);
-                        play.setBackgroundResource(R.drawable.ic_pause_circle_black);
-                    }else {
-                        setRunnable(false);
-                        play.setBackgroundResource(R.drawable.ic_play_circle_black);
-                    }
-                    break;
-                case MyConfig.MY_MEDIA_PLAY_CLOSE:
-                    getMediaStop();
-                    rlMainPlayMusic.setVisibility(View.GONE);
-                    //finish();
-                    break;
-            }
-        }
-    };
-
     private void getMediaStop() {
         play.setBackgroundResource(R.drawable.ic_play_circle_black);
-        imgAlbum.setImageResource(R.drawable.avatar_holder);
         seekBar.setProgress(0);
         currentTime.setText("00:00");
         maxTime.setText("00:00");

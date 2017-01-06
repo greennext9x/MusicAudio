@@ -6,7 +6,7 @@
     android:thickness="30dp"
     android:useLevel="false">
 
-    <solid android:color="@color/colorPlayMusic" />
+    <solid android:color="@color/backgroundPlayMusic" />
     <size
         android:width="60dp"
         android:height="60dp" />

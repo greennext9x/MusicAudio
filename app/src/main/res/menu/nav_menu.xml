@@ -8,7 +8,7 @@
         <item
             android:id="@+id/nav_new_hot"
             android:icon="@drawable/ic_hot"
-            android:title="New &amp; Host" />
+            android:title="New &amp; Hot" />
         <item
             android:id="@+id/nav_top50"
             android:icon="@drawable/ic_top"
